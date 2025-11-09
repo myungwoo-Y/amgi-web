@@ -12,3 +12,8 @@
 - Added Prisma + @prisma/client + PrismaAdapter wiring, defined schema (User, Auth tables, Deck, Card, ReviewHistory) w/ constraints and helper client.
 - Hooked Auth.js to PrismaAdapter w/ database sessions; documented DATABASE_URL usage and Neon-friendly example plus migrate commands.
 - `pnpm typecheck` passes; `pnpm lint` still blocked on Node 16.20.2.
+
+## 2025-11-09 – Step 4 Routing skeleton
+- Added protected routes: dashboard deck list, deck detail, review queue, sign-in guard, and placeholder deck creation screen; all server components use `requireUser` helper with Prisma queries.
+- Review queue computes due cards when `nextReviewAt` passed or never studied; dashboard and detail pages list decks/cards and CTA buttons for upcoming flows.
+- `pnpm typecheck` passes; `pnpm lint` remains blocked by Node 16.20.2 (Next.js requires ≥18.18.0).
