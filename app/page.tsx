@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SessionStatus } from "@/components/session-status";
 
 export default function Home() {
   return (
@@ -46,6 +47,10 @@ export default function Home() {
             Notify Me
           </Button>
         </form>
+      </div>
+
+      <div className="rounded-xl border bg-muted/40 p-4">
+        <SessionStatus />
       </div>
     </section>
   );

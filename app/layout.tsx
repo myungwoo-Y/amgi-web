@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
 import { SiteHeader } from "@/components/site-header";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,18 +21,22 @@ export const metadata: Metadata = {
   description: "Fast, focused flashcard reviews for ambitious learners.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased`}
       >
-        <SiteHeader />
-        <main className="mx-auto max-w-5xl px-4 py-16">{children}</main>
+        <AuthProvider session={session}>
+          <SiteHeader />
+          <main className="mx-auto max-w-5xl px-4 py-16">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );
