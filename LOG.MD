@@ -17,3 +17,8 @@
 - Added protected routes: dashboard deck list, deck detail, review queue, sign-in guard, and placeholder deck creation screen; all server components use `requireUser` helper with Prisma queries.
 - Review queue computes due cards when `nextReviewAt` passed or never studied; dashboard and detail pages list decks/cards and CTA buttons for upcoming flows.
 - `pnpm typecheck` passes; `pnpm lint` remains blocked by Node 16.20.2 (Next.js requires ≥18.18.0).
+
+## 2025-11-09 – Step 5 API + data flow
+- Implemented authenticated CRUD API routes for decks/cards with Prisma + Next.js route handlers, plus shared `apiRequest` helper and `getCurrentUser`.
+- Added React Query provider, deck/card hooks (`useDecks`, `useDeck`, `useCreateDeck`, etc.), Zustand UI store, and client components showing optimistic deck creation + card creation flows.
+- Dashboard/deck pages now use hooks + API data; `pnpm typecheck` passes and `pnpm lint` still blocked on system Node 16.20.2.
