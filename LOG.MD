@@ -22,3 +22,13 @@
 - Implemented authenticated CRUD API routes for decks/cards with Prisma + Next.js route handlers, plus shared `apiRequest` helper and `getCurrentUser`.
 - Added React Query provider, deck/card hooks (`useDecks`, `useDeck`, `useCreateDeck`, etc.), Zustand UI store, and client components showing optimistic deck creation + card creation flows.
 - Dashboard/deck pages now use hooks + API data; `pnpm typecheck` passes and `pnpm lint` still blocked on system Node 16.20.2.
+
+## 2025-11-09 – Step 6 UI composition
+- Added shadcn dialog/form/table/toaster primitives plus sonner/react-hook-form/zod setup for validated modals and toast feedback; Query layout now includes Toaster.
+- Rebuilt dashboard deck list as card grid with modal creation form (zod validation + optimistic React Query + Zustand state) and improved loading/empty states.
+- Reworked deck detail into card table with add/edit/delete dialogs, zod-validated forms, and success/error toasts tied to card CRUD APIs.
+
+## 2025-11-09 – Step 7 Review MVP
+- Added `/api/review` GET/POST for fetching due cards and recording ReviewHistory with grade-based intervals (0-5 → 1/1/1/2/4/7 days) plus `use-review` hooks.
+- Built `ReviewQueueClient` with framer-motion reveal, score buttons, toast feedback, and completion state; `/review` now renders the interactive queue after auth guard.
+- Typecheck still passes; lint remains blocked on system Node 16.20.2.

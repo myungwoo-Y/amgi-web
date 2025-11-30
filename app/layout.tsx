@@ -5,6 +5,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/toaster";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default async function RootLayout({
           <QueryProvider>
             <SiteHeader />
             <main className="mx-auto max-w-5xl px-4 py-16">{children}</main>
+            <Toaster />
           </QueryProvider>
         </AuthProvider>
       </body>

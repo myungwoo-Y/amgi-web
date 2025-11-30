@@ -1,24 +1,131 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useDeck } from "@/hooks/use-decks";
-import { useCreateCard } from "@/hooks/use-cards";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useDeck, type DeckDetail } from "@/hooks/use-decks";
+import { useCreateCard, useDeleteCard, useUpdateCard } from "@/hooks/use-cards";
 
-interface Props {
+const cardSchema = z.object({
+  front: z.string().trim().min(1, { message: "앞면을 입력하세요." }).max(200),
+  back: z.string().trim().min(1, { message: "뒷면을 입력하세요." }).max(400),
+  hint: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
+type CardFormValues = z.infer<typeof cardSchema>;
+
+type DeckCard = DeckDetail["cards"][number];
+
+interface DeckDetailClientProps {
   deckId: string;
 }
 
-export function DeckDetailClient({ deckId }: Props) {
+export function DeckDetailClient({ deckId }: DeckDetailClientProps) {
   const { data, isLoading, error } = useDeck(deckId);
   const createCard = useCreateCard(deckId);
-  const [front, setFront] = useState("");
-  const [back, setBack] = useState("");
-  const [hint, setHint] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
+  const [editingCard, setEditingCard] = useState<DeckCard | null>(null);
+  const [deletingCard, setDeletingCard] = useState<DeckCard | null>(null);
+  const [isCreateOpen, setCreateOpen] = useState(false);
+
+  const updateCard = useUpdateCard(editingCard?.id ?? "", deckId);
+  const deleteCard = useDeleteCard(deletingCard?.id ?? "", deckId);
+
+  const createForm = useForm<CardFormValues>({
+    resolver: zodResolver(cardSchema),
+    defaultValues: { front: "", back: "", hint: "" },
+  });
+
+  const editForm = useForm<CardFormValues>({
+    resolver: zodResolver(cardSchema),
+    defaultValues: { front: "", back: "", hint: "" },
+  });
+
+  const resetCreate = () => {
+    createForm.reset({ front: "", back: "", hint: "" });
+    setCreateOpen(false);
+  };
+
+  const openEditModal = (card: DeckCard) => {
+    setEditingCard(card);
+    editForm.reset({
+      front: card.front,
+      back: card.back,
+      hint: card.hint ?? "",
+    });
+  };
+
+  const closeEditModal = () => {
+    setEditingCard(null);
+  };
+
+  const handleCreateSubmit = createForm.handleSubmit((values) => {
+    createCard.mutate(values, {
+      onSuccess: () => {
+        toast.success("카드가 추가되었습니다.");
+        resetCreate();
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "카드 추가에 실패했습니다.");
+      },
+    });
+  });
+
+  const handleEditSubmit = editForm.handleSubmit((values) => {
+    if (!editingCard) return;
+    updateCard.mutate(values, {
+      onSuccess: () => {
+        toast.success("카드가 수정되었습니다.");
+        closeEditModal();
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "카드 수정 실패");
+      },
+    });
+  });
+
+  const confirmDelete = () => {
+    if (!deletingCard) return;
+    deleteCard.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("카드가 삭제되었습니다.");
+        setDeletingCard(null);
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "카드 삭제 실패");
+      },
+    });
+  };
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">덱을 불러오는 중...</p>;
@@ -29,28 +136,6 @@ export function DeckDetailClient({ deckId }: Props) {
   }
 
   const cards = data.cards ?? [];
-
-  const handleCreateCard = () => {
-    setFormError(null);
-    if (!front.trim() || !back.trim()) {
-      setFormError("앞면과 뒷면을 모두 입력해 주세요.");
-      return;
-    }
-
-    createCard.mutate(
-      { front: front.trim(), back: back.trim(), hint: hint.trim() || undefined },
-      {
-        onSuccess: () => {
-          setFront("");
-          setBack("");
-          setHint("");
-        },
-        onError: (err) => {
-          setFormError(err instanceof Error ? err.message : "카드 생성 실패");
-        },
-      }
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -64,67 +149,198 @@ export function DeckDetailClient({ deckId }: Props) {
             <p className="text-base text-muted-foreground italic">설명 없음</p>
           )}
         </div>
-        <div className="rounded-xl border bg-muted/30 p-4">
-          <p className="text-sm font-semibold text-foreground">카드 추가</p>
-          <div className="mt-3 space-y-2">
-            <Input
-              placeholder="앞면"
-              value={front}
-              onChange={(event) => setFront(event.target.value)}
-            />
-            <Textarea
-              placeholder="뒷면"
-              value={back}
-              onChange={(event) => setBack(event.target.value)}
-            />
-            <Input
-              placeholder="힌트 (선택)"
-              value={hint}
-              onChange={(event) => setHint(event.target.value)}
-            />
-            {formError && <p className="text-sm text-destructive">{formError}</p>}
-            <Button
-              type="button"
-              className="w-full"
-              onClick={handleCreateCard}
-              disabled={createCard.isPending}
-            >
-              {createCard.isPending ? "저장 중..." : "새 카드 만들기"}
-            </Button>
-          </div>
-        </div>
+        <Button onClick={() => setCreateOpen(true)}>새 카드 만들기</Button>
       </div>
 
-      {cards.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-muted/40 p-6 text-center">
-          <p className="text-sm text-muted-foreground">카드가 없습니다. 첫 카드를 추가해보세요.</p>
-        </div>
-      ) : (
-        <ul className="space-y-4">
-          {cards.map((card) => {
-            const nextReview = card.reviews?.[0]?.nextReviewAt;
-            return (
-              <li key={card.id} className="rounded-xl border bg-card p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <h2 className="text-lg font-semibold text-card-foreground">{card.front}</h2>
-                    <p className="text-sm text-muted-foreground">{card.back}</p>
-                    {card.hint && (
-                      <p className="text-xs text-muted-foreground">힌트: {card.hint}</p>
-                    )}
-                  </div>
-                  <div className="text-xs text-right text-muted-foreground">
-                    <p>업데이트 {new Date(card.updatedAt).toLocaleDateString()}</p>
-                    {nextReview && (
-                      <p>다음 복습 {new Date(nextReview).toLocaleDateString()}</p>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="rounded-2xl border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[180px]">앞면</TableHead>
+              <TableHead>뒷면</TableHead>
+              <TableHead className="w-[160px]">힌트</TableHead>
+              <TableHead className="w-[140px]">다음 복습</TableHead>
+              <TableHead className="w-[140px] text-right">액션</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cards.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  카드가 없습니다. “새 카드 만들기” 버튼을 눌러 카드를 추가하세요.
+                </TableCell>
+              </TableRow>
+            ) : (
+              cards.map((card) => {
+                const nextReview = card.reviews?.[0]?.nextReviewAt;
+                return (
+                  <TableRow key={card.id}>
+                    <TableCell className="font-medium">{card.front}</TableCell>
+                    <TableCell>{card.back}</TableCell>
+                    <TableCell>{card.hint ?? "-"}</TableCell>
+                    <TableCell>
+                      {nextReview ? new Date(nextReview).toLocaleDateString() : "학습 필요"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEditModal(card)}>
+                          수정
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeletingCard(card)}>
+                          삭제
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+          <TableCaption>{cards.length}장의 카드</TableCaption>
+        </Table>
+      </div>
+
+      {/* Create Card Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={(open: boolean) => (open ? setCreateOpen(true) : resetCreate())}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>새 카드 만들기</DialogTitle>
+            <DialogDescription>학습할 카드의 앞면/뒷면을 입력하세요.</DialogDescription>
+          </DialogHeader>
+          <Form {...createForm}>
+            <form className="space-y-4" onSubmit={handleCreateSubmit}>
+              <FormField
+                control={createForm.control}
+                name="front"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>앞면</FormLabel>
+                    <FormControl>
+                      <Input placeholder="예: React useState는?" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="back"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>뒷면</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="답을 입력하세요" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="hint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>힌트 (선택)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="기억 보조 팁" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={resetCreate}>
+                  취소
+                </Button>
+                <Button type="submit" disabled={createCard.isPending}>
+                  {createCard.isPending ? "저장 중..." : "카드 생성"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Card Dialog */}
+      <Dialog open={Boolean(editingCard)} onOpenChange={(open: boolean) => (!open ? closeEditModal() : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>카드 수정</DialogTitle>
+            <DialogDescription>선택한 카드의 내용을 업데이트합니다.</DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form className="space-y-4" onSubmit={handleEditSubmit}>
+              <FormField
+                control={editForm.control}
+                name="front"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>앞면</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="back"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>뒷면</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="hint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>힌트</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={closeEditModal}>
+                  취소
+                </Button>
+                <Button type="submit" disabled={updateCard.isPending}>
+                  {updateCard.isPending ? "저장 중..." : "변경 사항 저장"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={Boolean(deletingCard)} onOpenChange={(open: boolean) => (!open ? setDeletingCard(null) : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>카드 삭제</DialogTitle>
+            <DialogDescription>
+              “{deletingCard?.front}” 카드를 삭제하면 복구할 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCard(null)}>
+              취소
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteCard.isPending}>
+              {deleteCard.isPending ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
